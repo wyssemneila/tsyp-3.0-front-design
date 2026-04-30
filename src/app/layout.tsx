@@ -1,33 +1,15 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import type { Metadata } from 'next'
+import './globals.css'
 
 export const metadata: Metadata = {
-  title: "TSYP 3.0 — Where Human Meets Machine",
-  description: "IEEE TSYP 3.0 — The convergence of human ingenuity and artificial intelligence.",
-};
+  title: 'Video Inspiration — AI-Powered YouTube Recommendations',
+  description: 'Discover videos you love. Rate videos to train your personal AI recommendation engine.',
+}
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
-  );
+  )
 }

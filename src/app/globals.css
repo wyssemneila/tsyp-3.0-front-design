@@ -1,95 +1,46 @@
-@import "tailwindcss";
-
-:root {
-  --cream: #ede8df;
-  --ink:   #0a0806;
-  --lime:  #c5f000;
-}
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: var(--cream);
-  color: var(--ink);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #0f0f0f;
+  color: #e8e8e8;
+  font-family: 'Roboto', 'Segoe UI', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
-  height: 100vh;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
-/* ── spinning gradient ring ── */
-.ring-spin {
-  animation: ring-spin 9s linear infinite;
-}
-@keyframes ring-spin {
-  to { transform: rotate(360deg); }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
-/* ── CRT scanlines ── */
-.scanlines {
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 3px,
-    rgba(0, 0, 0, 0.15) 3px,
-    rgba(0, 0, 0, 0.15) 4px
-  );
+@keyframes slideIn {
+  from { transform: translateX(110%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
 }
 
-/* ── dot grid background ── */
-.bg-grid {
-  background-image:
-    linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
-  background-size: 60px 60px;
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── online pulse dot ── */
-.dot-pulse {
-  animation: dot-pulse 2s ease-in-out infinite;
-}
-@keyframes dot-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 6px #22c55e; }
-  50%       { opacity: 0.4; box-shadow: none; }
-}
-
-/* ── buttons ── */
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 32px;
-  border-radius: 100px;
-  background: linear-gradient(135deg, var(--blue), var(--purple));
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.9rem;
-  letter-spacing: 0.4px;
-  text-decoration: none;
-  box-shadow: 0 4px 30px rgba(37,99,235,0.4);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 40px rgba(37,99,235,0.55);
+.spinner {
+  width: 38px; height: 38px;
+  border: 3px solid #2a2a2a;
+  border-top-color: #ff3333;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 14px;
 }
 
-.btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 13px 30px;
-  border-radius: 100px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.65);
-  font-weight: 600;
-  font-size: 0.9rem;
-  text-decoration: none;
-  transition: background 0.18s, border-color 0.18s, color 0.18s;
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 22px;
+  animation: fadeUp 0.35s ease;
 }
-.btn-ghost:hover {
-  background: rgba(255,255,255,0.09);
-  border-color: rgba(255,255,255,0.22);
-  color: #fff;
-}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0f0f0f; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
