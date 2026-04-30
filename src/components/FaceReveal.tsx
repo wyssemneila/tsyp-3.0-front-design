@@ -41,8 +41,8 @@ const frag = /* glsl */`
   uniform sampler2D uRobot;
   uniform sampler2D uNoise;
   uniform sampler2D uDepth;
-  uniform float     uProgress;   // 0 = human, 1 = robot
-  uniform vec2      uMouse;      // normalised -1..1
+  uniform float     uProgress;
+  uniform vec2      uMouse;
   uniform float     uTime;
 
   varying vec2 vUv;
@@ -50,39 +50,37 @@ const frag = /* glsl */`
   void main() {
     vec2 uv = vUv;
 
-    // Faux-depth parallax: depth texture pushes pixels toward cursor
+    // Faux-depth parallax from mouse
     float depth = texture2D(uDepth, uv).r;
-    vec2 displaced = uv + uMouse * depth * 0.04;
+    vec2 displaced = uv + uMouse * depth * 0.038;
+    displaced = clamp(displaced, 0.001, 0.999);
 
-    // Sample both faces with displaced UV
+    // Sample both faces
     vec4 human = texture2D(uHuman, displaced);
     vec4 robot  = texture2D(uRobot,  displaced);
 
-    // Multi-scale noise for organic, non-uniform wipe
-    float n  = texture2D(uNoise, uv * 1.6).r;
-    float n2 = texture2D(uNoise, uv * 3.2 + vec2(0.4, 0.7)).r;
-    float noise = n * 0.7 + n2 * 0.3;
+    // Multi-scale noise for organic wipe
+    float n1 = texture2D(uNoise, uv * 1.5).r;
+    float n2 = texture2D(uNoise, uv * 3.0 + vec2(0.37, 0.61)).r;
+    float noise = n1 * 0.65 + n2 * 0.35;
 
-    // Soft threshold — controls the pixel-level transition front
-    float edge  = 0.10;
-    float t     = smoothstep(uProgress - edge, uProgress + edge, noise);
+    // Smooth threshold transition
+    float t = smoothstep(uProgress - 0.09, uProgress + 0.09, noise);
 
     // Blend human → robot
     vec4 color = mix(human, robot, t);
 
-    // Chromatic split at the wipe boundary (sci-fi glitch feel)
-    float boundary = 1.0 - abs(t - 0.5) * 2.0;
-    vec2 ca = vec2(0.008, 0.0) * boundary;
-    color.r = mix(color.r, texture2D(uRobot, displaced + ca).r, boundary * 0.5);
-    color.b = mix(color.b, texture2D(uHuman, displaced - ca).b, boundary * 0.5);
+    // Chromatic aberration at the wipe boundary
+    float boundary = (1.0 - abs(t * 2.0 - 1.0));
+    vec2 ca = vec2(0.007, 0.0) * boundary;
+    color.r = mix(color.r, texture2D(uRobot, clamp(displaced + ca, 0.001, 0.999)).r, boundary * 0.45);
+    color.b = mix(color.b, texture2D(uHuman, clamp(displaced - ca, 0.001, 0.999)).b, boundary * 0.45);
 
-    // Subtle scanline overlay
-    float scan = sin(uv.y * 600.0) * 0.5 + 0.5;
-    color.rgb *= 1.0 - scan * 0.04;
-
-    // Radial vignette
-    float dist = length(uv - 0.5);
-    color.rgb *= 1.0 - smoothstep(0.35, 0.75, dist) * 0.7;
+    // Fade edges to cream background (#ede8df = vec3(0.929, 0.910, 0.875))
+    float dist = length(uv - 0.5) * 2.0;
+    float fade = smoothstep(0.75, 1.0, dist);
+    vec3 cream = vec3(0.929, 0.910, 0.875);
+    color.rgb = mix(color.rgb, cream, fade);
 
     gl_FragColor = color;
   }
@@ -181,11 +179,13 @@ function FaceMesh({ robotUrl, humanUrl }: { robotUrl: string; humanUrl: string }
     mat.uniforms.uProgress.value = sharpened
   })
 
-  const size = Math.min(viewport.width, viewport.height) * 0.92
+  // Fill the full canvas (portrait: wider than tall possible)
+  const w = viewport.width
+  const h = viewport.height
 
   return (
     <mesh>
-      <planeGeometry args={[size, size, 1, 1]} />
+      <planeGeometry args={[w, h, 1, 1]} />
       <shaderMaterial
         ref={matRef}
         vertexShader={vert}

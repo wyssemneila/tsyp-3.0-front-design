@@ -1,17 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #05050e;
-  --blue: #2563eb;
-  --cyan: #06b6d4;
-  --purple: #7c3aed;
+  --cream: #ede8df;
+  --ink:   #0a0806;
+  --lime:  #c5f000;
 }
 
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
-  background: var(--bg);
-  color: #fff;
+  background: var(--cream);
+  color: var(--ink);
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  height: 100vh;
 }
 
 /* ── spinning gradient ring ── */
