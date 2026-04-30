@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Video Inspiration — AI-Powered YouTube Recommendations',
-  description: 'Discover videos you love. Rate videos to train your personal AI recommendation engine.',
+  title: 'Lando Norris — McLaren F1 Driver',
+  description: 'Official portfolio of Lando Norris. On track. Off track. No limits.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
