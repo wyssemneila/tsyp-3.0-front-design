@@ -5,18 +5,14 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useTexture } from '@react-three/drei'
 import * as THREE from 'three'
 
-// ── Error boundary ──────────────────────────────────────────────────────────
+// ── Error boundary ───────────────────────────────────────────────────────────
 class FaceErrorBoundary extends Component<{ children: ReactNode }, { err: boolean }> {
   state = { err: false }
   static getDerivedStateFromError() { return { err: true } }
   render() {
     if (this.state.err) return (
-      <div style={{
-        width: '100%', height: '100%', display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-        background: 'linear-gradient(135deg,#0a1525,#05050e)',
-      }}>
-        <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, textAlign: 'center', maxWidth: 150 }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ede8df' }}>
+        <p style={{ color: 'rgba(0,0,0,0.3)', fontSize: 11, textAlign: 'center', maxWidth: 160 }}>
           Drop robot.jpg + human.jpg into /public
         </p>
       </div>
@@ -25,7 +21,7 @@ class FaceErrorBoundary extends Component<{ children: ReactNode }, { err: boolea
   }
 }
 
-// ── GLSL shaders ────────────────────────────────────────────────────────────
+// ── Vertex shader ────────────────────────────────────────────────────────────
 const vert = /* glsl */`
   varying vec2 vUv;
   void main() {
@@ -34,158 +30,150 @@ const vert = /* glsl */`
   }
 `
 
+// ── Fragment shader ──────────────────────────────────────────────────────────
+// The robot face appears in scattered organic PATCHES over the human face.
+// Each patch is determined by a large-scale noise value vs a threshold.
+// The noise DRIFTS slowly → patches shift position over time (never fully wipes).
+// Mouse adds a depth parallax: robot layer moves slightly different from human.
 const frag = /* glsl */`
   precision highp float;
 
-  uniform sampler2D uHuman;
-  uniform sampler2D uRobot;
-  uniform sampler2D uNoise;
-  uniform sampler2D uDepth;
-  uniform float     uProgress;
-  uniform vec2      uMouse;
-  uniform float     uTime;
+  uniform sampler2D uHuman;   // base: human face
+  uniform sampler2D uRobot;   // overlay: robot face (appears in patches)
+  uniform sampler2D uNoise;   // large blob noise
+  uniform sampler2D uDepth;   // depth map for parallax
+  uniform float     uTime;    // elapsed seconds
+  uniform vec2      uMouse;   // normalized mouse -1..1
 
   varying vec2 vUv;
 
   void main() {
     vec2 uv = vUv;
 
-    // Faux-depth parallax from mouse
+    // ── Mouse depth parallax ──
+    // Human face stays still; robot layer moves with mouse (feels closer/in-front)
     float depth = texture2D(uDepth, uv).r;
-    vec2 displaced = uv + uMouse * depth * 0.038;
-    displaced = clamp(displaced, 0.001, 0.999);
+    vec2 robotUv = clamp(uv + uMouse * depth * 0.045, 0.001, 0.999);
+    vec2 humanUv = clamp(uv + uMouse * depth * 0.012, 0.001, 0.999);
 
-    // Sample both faces
-    vec4 human = texture2D(uHuman, displaced);
-    vec4 robot  = texture2D(uRobot,  displaced);
+    vec4 human = texture2D(uHuman, humanUv);
+    vec4 robot  = texture2D(uRobot,  robotUv);
 
-    // Multi-scale noise for organic wipe
-    float n1 = texture2D(uNoise, uv * 1.5).r;
-    float n2 = texture2D(uNoise, uv * 3.0 + vec2(0.37, 0.61)).r;
-    float noise = n1 * 0.65 + n2 * 0.35;
+    // ── Drifting large-scale noise ──
+    // Two octaves drifting in slightly different directions = living patches
+    vec2 drift1 = vec2(uTime * 0.028,  uTime * 0.018);
+    vec2 drift2 = vec2(-uTime * 0.015, uTime * 0.022);
 
-    // Smooth threshold transition
-    float t = smoothstep(uProgress - 0.09, uProgress + 0.09, noise);
+    float n1 = texture2D(uNoise, uv * 0.9 + drift1).r;          // big blobs
+    float n2 = texture2D(uNoise, uv * 1.7 + drift2 + 0.4).r;    // medium blobs
+    float noise = n1 * 0.70 + n2 * 0.30;
 
-    // Blend human → robot
-    vec4 color = mix(human, robot, t);
+    // ── Hard patch threshold (no blend — sharp edges like the screenshots) ──
+    // threshold 0.5 → ~half the patches show robot at any moment
+    float threshold = 0.50;
+    float edge      = 0.03;   // tiny softness only at the very border
+    float mask = smoothstep(threshold - edge, threshold + edge, noise);
 
-    // Chromatic aberration at the wipe boundary
-    float boundary = (1.0 - abs(t * 2.0 - 1.0));
-    vec2 ca = vec2(0.007, 0.0) * boundary;
-    color.r = mix(color.r, texture2D(uRobot, clamp(displaced + ca, 0.001, 0.999)).r, boundary * 0.45);
-    color.b = mix(color.b, texture2D(uHuman, clamp(displaced - ca, 0.001, 0.999)).b, boundary * 0.45);
+    // ── Composite: human base + robot patches ──
+    vec4 color = mix(human, robot, mask);
 
-    // Fade edges to cream background (#ede8df = vec3(0.929, 0.910, 0.875))
-    float dist = length(uv - 0.5) * 2.0;
-    float fade = smoothstep(0.75, 1.0, dist);
-    vec3 cream = vec3(0.929, 0.910, 0.875);
-    color.rgb = mix(color.rgb, cream, fade);
+    // ── Thin chromatic glitch line exactly at patch borders ──
+    float border = 1.0 - abs(mask * 2.0 - 1.0);
+    border = pow(border, 6.0);   // very narrow
+    vec2 ca = vec2(0.006, 0.0);
+    color.r += texture2D(uRobot, clamp(robotUv + ca, 0.001, 0.999)).r * border * 0.6;
+    color.b += texture2D(uHuman, clamp(humanUv - ca, 0.001, 0.999)).b * border * 0.6;
 
     gl_FragColor = color;
   }
 `
 
-// ── Procedural textures (client-side only) ──────────────────────────────────
+// ── Large organic blob noise (repeating) ─────────────────────────────────────
 function makeNoiseTex(): THREE.CanvasTexture {
   const S = 512
   const c = document.createElement('canvas')
   c.width = c.height = S
   const ctx = c.getContext('2d')!
-  ctx.fillStyle = '#808080'
+  ctx.fillStyle = '#444'
   ctx.fillRect(0, 0, S, S)
-  for (let i = 0; i < 400; i++) {
+  // Fewer, LARGER blobs → big organic patches (not fine grain)
+  for (let i = 0; i < 120; i++) {
     const x = Math.random() * S
     const y = Math.random() * S
-    const r = 10 + Math.random() * 90
+    const r = 60 + Math.random() * 140        // large blobs
     const v = Math.round(Math.random() * 255)
     const g = ctx.createRadialGradient(x, y, 0, x, y, r)
-    g.addColorStop(0, `rgba(${v},${v},${v},0.85)`)
-    g.addColorStop(1, `rgba(128,128,128,0)`)
+    g.addColorStop(0,   `rgba(${v},${v},${v},1)`)
+    g.addColorStop(0.6, `rgba(${v},${v},${v},0.6)`)
+    g.addColorStop(1,   `rgba(68,68,68,0)`)
     ctx.fillStyle = g
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill()
   }
   const t = new THREE.CanvasTexture(c)
   t.wrapS = t.wrapT = THREE.RepeatWrapping
+  t.minFilter = THREE.LinearFilter
   return t
 }
 
+// ── Depth map: bright center = closer (more parallax shift) ──────────────────
 function makeDepthTex(): THREE.CanvasTexture {
   const S = 256
   const c = document.createElement('canvas')
   c.width = c.height = S
   const ctx = c.getContext('2d')!
-  const g = ctx.createRadialGradient(S / 2, S / 2 - S * 0.05, 0, S / 2, S / 2, S * 0.65)
-  g.addColorStop(0.0, '#ffffff')
-  g.addColorStop(0.6, '#aaaaaa')
-  g.addColorStop(1.0, '#000000')
+  const g = ctx.createRadialGradient(S / 2, S * 0.42, 0, S / 2, S / 2, S * 0.62)
+  g.addColorStop(0.0, '#fff')
+  g.addColorStop(0.5, '#aaa')
+  g.addColorStop(1.0, '#000')
   ctx.fillStyle = g
   ctx.fillRect(0, 0, S, S)
   return new THREE.CanvasTexture(c)
 }
 
-// ── Main shader mesh ─────────────────────────────────────────────────────────
+// ── Shader mesh ───────────────────────────────────────────────────────────────
 function FaceMesh({ robotUrl, humanUrl }: { robotUrl: string; humanUrl: string }) {
   const [humanTex, robotTex] = useTexture([humanUrl, robotUrl])
   const { viewport, gl } = useThree()
 
-  const matRef  = useRef<THREE.ShaderMaterial>(null!)
-  const mouse   = useRef(new THREE.Vector2(0, 0))
-  const tMouse  = useRef(new THREE.Vector2(0, 0))
+  const matRef = useRef<THREE.ShaderMaterial>(null!)
+  const mouse  = useRef(new THREE.Vector2(0, 0))
+  const tMouse = useRef(new THREE.Vector2(0, 0))
 
   const { noiseTex, depthTex } = useMemo(() => ({
     noiseTex: makeNoiseTex(),
-    depthTex: makeDepthTex(),
+    depthTex:  makeDepthTex(),
   }), [])
 
-  // Mouse tracking (window-level for responsiveness)
   useEffect(() => {
-    const canvas = gl.domElement
     const onMove = (e: MouseEvent) => {
-      const r = canvas.getBoundingClientRect()
-      tMouse.current.x =  ((e.clientX - r.left)  / r.width  - 0.5) * 2
-      tMouse.current.y = -((e.clientY - r.top)   / r.height - 0.5) * 2
+      const r = gl.domElement.getBoundingClientRect()
+      tMouse.current.x =  ((e.clientX - r.left) / r.width  - 0.5) * 2
+      tMouse.current.y = -((e.clientY - r.top)  / r.height - 0.5) * 2
     }
     window.addEventListener('mousemove', onMove)
     return () => window.removeEventListener('mousemove', onMove)
   }, [gl])
 
   const uniforms = useMemo(() => ({
-    uHuman:    { value: humanTex },
-    uRobot:    { value: robotTex },
-    uNoise:    { value: noiseTex },
-    uDepth:    { value: depthTex },
-    uProgress: { value: 0.0 },
-    uMouse:    { value: new THREE.Vector2(0, 0) },
-    uTime:     { value: 0.0 },
+    uHuman: { value: humanTex },
+    uRobot: { value: robotTex },
+    uNoise: { value: noiseTex },
+    uDepth: { value: depthTex },
+    uTime:  { value: 0.0 },
+    uMouse: { value: new THREE.Vector2(0, 0) },
   }), [humanTex, robotTex, noiseTex, depthTex])
 
   useFrame(({ clock }, dt) => {
     const mat = matRef.current
     if (!mat) return
-
-    // Smooth mouse lerp
     mouse.current.lerp(tMouse.current, 1 - Math.exp(-5 * dt))
     mat.uniforms.uMouse.value.copy(mouse.current)
     mat.uniforms.uTime.value = clock.getElapsedTime()
-
-    // Auto-animate progress with held peaks: human → robot → human
-    // sin oscillates 0→1→0, smoothstep sharpens the hold at extremes
-    const raw = (Math.sin(clock.getElapsedTime() * 0.55) + 1) / 2
-    const sharpened = THREE.MathUtils.clamp(
-      (raw - 0.15) / 0.7,  // stretch [0.15,0.85] → [0,1] for longer holds
-      0, 1
-    )
-    mat.uniforms.uProgress.value = sharpened
   })
-
-  // Fill the full canvas (portrait: wider than tall possible)
-  const w = viewport.width
-  const h = viewport.height
 
   return (
     <mesh>
-      <planeGeometry args={[w, h, 1, 1]} />
+      <planeGeometry args={[viewport.width, viewport.height, 1, 1]} />
       <shaderMaterial
         ref={matRef}
         vertexShader={vert}
@@ -196,7 +184,7 @@ function FaceMesh({ robotUrl, humanUrl }: { robotUrl: string; humanUrl: string }
   )
 }
 
-// ── Public component ─────────────────────────────────────────────────────────
+// ── Public export ─────────────────────────────────────────────────────────────
 export default function FaceReveal({
   robotUrl = '/robot-placeholder.svg',
   humanUrl = '/human-placeholder.svg',
