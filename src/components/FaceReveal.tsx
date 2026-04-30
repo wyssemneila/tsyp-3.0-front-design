@@ -1,9 +1,38 @@
 'use client'
 
-import { Suspense, useRef, useMemo } from 'react'
+import { Component, Suspense, useRef, useMemo, type ReactNode } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useTexture } from '@react-three/drei'
 import * as THREE from 'three'
+
+class FaceErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          width: '100%', height: '100%',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 12,
+          background: 'linear-gradient(135deg, #0a1525, #05050e)',
+        }}>
+          <div style={{ fontSize: 28, color: '#2563eb' }}>⬡</div>
+          <p style={{
+            color: 'rgba(255,255,255,0.28)', fontSize: 11,
+            textAlign: 'center', maxWidth: 150, lineHeight: 1.6, margin: 0,
+          }}>
+            Drop robot.jpg + human.jpg into /public
+          </p>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const COLS = 9
 const ROWS = 9
@@ -140,21 +169,23 @@ function FaceGrid({ robotUrl, humanUrl }: { robotUrl: string; humanUrl: string }
 }
 
 export default function FaceReveal({
-  robotUrl = '/robot.jpg',
-  humanUrl = '/human.jpg',
+  robotUrl = '/robot-placeholder.svg',
+  humanUrl = '/human-placeholder.svg',
 }: {
   robotUrl?: string
   humanUrl?: string
 }) {
   return (
-    <Canvas
-      camera={{ position: [0, 0, 5], fov: 75 }}
-      dpr={[1, 2]}
-      gl={{ antialias: true }}
-    >
-      <Suspense fallback={null}>
-        <FaceGrid robotUrl={robotUrl} humanUrl={humanUrl} />
-      </Suspense>
-    </Canvas>
+    <FaceErrorBoundary>
+      <Canvas
+        camera={{ position: [0, 0, 5], fov: 75 }}
+        dpr={[1, 2]}
+        gl={{ antialias: true }}
+      >
+        <Suspense fallback={null}>
+          <FaceGrid robotUrl={robotUrl} humanUrl={humanUrl} />
+        </Suspense>
+      </Canvas>
+    </FaceErrorBoundary>
   )
 }
