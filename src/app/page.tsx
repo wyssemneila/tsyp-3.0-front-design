@@ -1,65 +1,156 @@
-import Image from "next/image";
+'use client'
+
+import dynamic from 'next/dynamic'
+
+const FaceReveal = dynamic(() => import('@/components/FaceReveal'), { ssr: false })
+
+const stats = [
+  { value: '500+', label: 'Participants' },
+  { value: '3 Days', label: 'Of Innovation' },
+  { value: '20+',   label: 'Countries' },
+]
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen overflow-hidden" style={{ background: '#05050e' }}>
+
+      {/* ── HERO ── */}
+      <section className="relative min-h-screen flex items-center">
+
+        {/* dot grid */}
+        <div className="bg-grid absolute inset-0 pointer-events-none" />
+
+        {/* ambient glows */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div style={{
+            position: 'absolute', left: '28%', top: '45%', transform: 'translate(-50%,-50%)',
+            width: 640, height: 640, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(37,99,235,0.13) 0%, transparent 70%)',
+          }} />
+          <div style={{
+            position: 'absolute', right: '18%', top: '50%', transform: 'translateY(-50%)',
+            width: 440, height: 440, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(124,58,237,0.09) 0%, transparent 70%)',
+          }} />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-24"
+          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
+
+          {/* ── 3D Face Widget ── */}
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{ position: 'relative', width: 420, height: 420, flexShrink: 0 }}>
+
+              {/* spinning conic ring */}
+              <div className="ring-spin" style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                background: 'conic-gradient(from 0deg, #2563eb, #06b6d4, #7c3aed, #ec4899, #2563eb)',
+                padding: 4,
+              }}>
+                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#05050e' }} />
+              </div>
+
+              {/* canvas clip circle */}
+              <div style={{
+                position: 'absolute', inset: 9, borderRadius: '50%',
+                overflow: 'hidden', zIndex: 2,
+                boxShadow: '0 0 60px rgba(37,99,235,0.2), inset 0 0 40px rgba(0,0,0,0.6)',
+              }}>
+                <FaceReveal />
+              </div>
+
+              {/* scanlines overlay */}
+              <div className="scanlines" style={{
+                position: 'absolute', inset: 9, borderRadius: '50%',
+                zIndex: 3, pointerEvents: 'none', opacity: 0.4,
+              }} />
+
+              {/* image swap hint badge */}
+              <div style={{
+                position: 'absolute', bottom: 14, right: 14, zIndex: 4,
+                background: 'rgba(5,5,14,0.85)', border: '1px solid rgba(37,99,235,0.4)',
+                borderRadius: 8, padding: '5px 10px', fontSize: 11,
+                color: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(8px)',
+              }}>
+                Add robot.jpg + human.jpg → /public
+              </div>
+            </div>
+          </div>
+
+          {/* ── Text ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+
+            <span style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: 5,
+              textTransform: 'uppercase', color: '#2563eb',
+            }}>
+              IEEE · TSYP 3.0 · 2026
+            </span>
+
+            <h1 style={{
+              fontSize: 'clamp(2.8rem, 5vw, 4.2rem)',
+              fontWeight: 900, lineHeight: 1.06, letterSpacing: '-0.02em', margin: 0,
+            }}>
+              <span style={{
+                background: 'linear-gradient(135deg, #ffffff 0%, #b8d0ff 60%)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              }}>
+                The Future
+              </span>
+              <br />
+              <span style={{
+                background: 'linear-gradient(90deg, #2563eb, #06b6d4)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              }}>
+                Has a Face.
+              </span>
+            </h1>
+
+            <p style={{
+              fontSize: '1.05rem', color: 'rgba(255,255,255,0.42)',
+              lineHeight: 1.75, maxWidth: 420, margin: 0,
+            }}>
+              Where human ingenuity and artificial intelligence converge.
+              Join the next generation of technology leaders shaping tomorrow.
+            </p>
+
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+              <a href="#register" className="btn-primary">Register Now →</a>
+              <a href="#about" className="btn-ghost">▷ Watch Demo</a>
+            </div>
+
+            {/* stats */}
+            <div style={{
+              display: 'flex', gap: 36,
+              paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              {stats.map(s => (
+                <div key={s.label}>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 900, margin: 0, color: '#fff' }}>
+                    {s.value}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.32)', marginTop: 3 }}>
+                    {s.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* online status */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="dot-pulse" style={{
+                width: 7, height: 7, borderRadius: '50%',
+                background: '#22c55e', display: 'inline-block', flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.28)' }}>
+                AI system online · Registrations open
+              </span>
+            </div>
+
+          </div>
         </div>
-      </main>
-    </div>
-  );
+      </section>
+
+    </main>
+  )
 }
